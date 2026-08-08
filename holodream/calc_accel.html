@@ -240,7 +240,7 @@
   <h2>編成の設定</h2>
 
   <ul class="help">
-    <li><strong>名前</strong>：ホロメンの名前を選択してください。結果表示にのみ使います</li>
+    <li><strong>名前</strong>：ホロメンの名前を選択してください。なお、発動間隔などのデータは<strong>自動では入りません。</strong><small>スマン</small></li>
     <li><strong>発動間隔</strong>：アクティブスキル「○○秒毎に」の部分の数値を入れてください</li>
     <li><strong>持続時間</strong>：アクティブスキル「○○秒間」の部分の数値を入れてください</li>
     <li><strong>上昇率</strong>：アクティブスキル「○○%UP」の部分の数値を入れてください。ホロメンボードやパッシブスキルの効果も反映させておくとより正確に計算できます</li>
@@ -422,19 +422,19 @@ for (let i = 0; i < 5; i++) {
       <div class="field">
         <label for="member${i}_cooldown">発動間隔（秒）</label>
         <input id="member${i}_cooldown" type="number"
-               min="0" step="any" value="${15 + i * 5}">
+               min="1" step="any" value="50">
       </div>
 
       <div class="field">
         <label for="member${i}_duration">持続時間（秒）</label>
         <input id="member${i}_duration" type="number"
-               min="0" step="any" value="${6 + i}">
+               min="1" step="any" value="10">
       </div>
 
       <div class="field">
         <label for="member${i}_rate">上昇率（%）</label>
         <input id="member${i}_rate" type="number"
-               min="0" step="1" value="${100 + i * 5}">
+               min="0" step="1" value="150">
       </div>
 
       <div class="field">
