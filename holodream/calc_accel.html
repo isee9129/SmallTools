@@ -149,10 +149,6 @@
   }
 
   .result {
-    display: none;
-  }
-
-  .result.visible {
     display: block;
   }
 
@@ -289,7 +285,7 @@
     </div>
   </div>
 
-  <h2>計算結果</h2>
+  <h2>計算</h2>
 
   <div class="card">
 
@@ -302,20 +298,25 @@
   </div>
 
   <section id="result" class="result">
-    <h2>出力</h2>
 
     <div class="card">
       <h3>解放設定</h3>
-      <ol class="output-list" id="releaseSettings"></ol>
+      <ol class="output-list" id="releaseSettings">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+      </ol>
 
       <div class="summary">
         <div class="metric">
-          <div class="metric-title">スキル効果合計</div>
-          <div class="metric-value" id="totalRate">---</div>
-        </div>
-        <div class="metric">
           <div class="metric-title">スキルなし区間長さ</div>
           <div class="metric-value" id="noSkillTime">---</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">スキル効果合計</div>
+          <div class="metric-value" id="totalRate">---</div>
         </div>
       </div>
 
@@ -469,7 +470,7 @@ function displayResult(result) {
 
   result.releaseSettings.forEach((item, i) => {
     const li = document.createElement("li");
-    li.textContent = `ホロメン${i + 1} ${item.name}：${item.count} 個`;
+    li.textContent = `${item.name}：${item.count} 個`;
     releaseSettings.appendChild(li);
   });
 
