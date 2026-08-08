@@ -530,10 +530,11 @@ function drawTimeline(result) {
 
   const x = t => left + (t - L) / (R - L) * (right - left);
 
+
   // 縦グリッド
   ctx.setLineDash([4, 4]);
   for (let t = Math.ceil(L / 10) * 10; t <= R; t += 10) {
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.strokeStyle = "rgba(128,128,128,1)";
     ctx.beginPath();
     ctx.moveTo(x(t), top);
     ctx.lineTo(x(t), top + rowHeight * 6 + gap);
@@ -543,7 +544,7 @@ function drawTimeline(result) {
   ctx.setLineDash([2, 4]);
   for (let t = Math.ceil(L / 5) * 5; t <= R; t += 5) {
     if (t % 10 === 0) continue;
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.strokeStyle = "rgba(192,192,192,1)";
     ctx.beginPath();
     ctx.moveTo(x(t), top);
     ctx.lineTo(x(t), top + rowHeight * 6 + gap);
@@ -557,7 +558,7 @@ function drawTimeline(result) {
   ctx.textAlign = "right";
   for (let i = 0; i < 5; i++) {
     ctx.fillText(String(i + 1), left - 10,
-      top + (4 - i) * rowHeight + rowHeight / 2 + 5);
+      top + i * (rowHeight - 3) + rowHeight / 2 + 15);
   }
   ctx.fillText("all", left - 10,
     top + 5 * rowHeight + rowHeight / 2 + 5);
@@ -570,7 +571,7 @@ function drawTimeline(result) {
 
   // 各ホロメンのスキル区間
   for (let i = 0; i < 5; i++) {
-    const y = top + (4 - i) * rowHeight;
+    const y = top + i * (rowHeight - 3) + 12;
     const color = result.colors[i] || "#999";
 
     for (const interval of result.memberIntervals[i]) {
@@ -585,15 +586,56 @@ function drawTimeline(result) {
 
   // all 行
   const allY = top + 5 * rowHeight;
+
+  let mergedInterval = null;
+
   for (const interval of result.allIntervals) {
     const l = Math.max(interval.start, L);
     const r = Math.min(interval.end, R);
+
     if (l >= r || interval.memberIndex < 0) continue;
 
-    ctx.fillStyle = result.colors[interval.memberIndex] || "#999";
-    ctx.fillRect(x(l), allY, x(r) - x(l), rowHeight - 3);
+    if (
+      mergedInterval !== null &&
+      mergedInterval.memberIndex === interval.memberIndex &&
+      mergedInterval.end === l
+    ) {
+      // 同じ色かつ連続しているので結合
+      mergedInterval.end = r;
+    } else {
+      // これまでの長方形を描画
+      if (mergedInterval !== null) {
+        ctx.fillStyle =
+          result.colors[mergedInterval.memberIndex] || "#999";
+
+        ctx.fillRect(
+          x(mergedInterval.start),
+          allY,
+          x(mergedInterval.end) - x(mergedInterval.start),
+          rowHeight - 3
+        );
+      }
+
+      mergedInterval = {
+        start: l,
+        end: r,
+        memberIndex: interval.memberIndex
+      };
+    }
   }
 
+  // 最後の長方形を描画
+  if (mergedInterval !== null) {
+    ctx.fillStyle =
+      result.colors[mergedInterval.memberIndex] || "#999";
+
+    ctx.fillRect(
+      x(mergedInterval.start),
+      allY,
+      x(mergedInterval.end) - x(mergedInterval.start),
+      rowHeight - 3
+    );
+  }
   // 枠線は matplotlib 版と同様に描かない。
 }
 
