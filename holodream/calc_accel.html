@@ -1,1 +1,738 @@
-<p>ホロドリ アクティブスキル 計算機　の予定地</p>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ホロドリ アクティブスキル発動頻度 計算機</title>
+<style>
+  :root {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "Noto Sans JP", sans-serif;
+    color: #222;
+    background: #f7f7f8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+  }
+
+  h2 {
+    margin: 28px 0 12px;
+    font-size: 21px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+  }
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 17px;
+  }
+
+  .description {
+    color: #555;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .members {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .field.full {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  input, select {
+    width: 100%;
+    min-height: 38px;
+    padding: 7px 9px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    background: #fff;
+    font: inherit;
+  }
+
+  input:focus, select:focus {
+    outline: 2px solid #b8d8ff;
+    border-color: #5794d8;
+  }
+
+  .help {
+    margin: 0 0 18px;
+    padding-left: 20px;
+    color: #444;
+    line-height: 1.65;
+  }
+
+  .help li {
+    margin-bottom: 4px;
+  }
+
+  .run-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+  }
+
+  button {
+    border: 0;
+    border-radius: 7px;
+    padding: 10px 20px;
+    background: #1a73e8;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #155fc0;
+  }
+
+  button:disabled {
+    background: #aaa;
+    cursor: default;
+  }
+
+  .status {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .error {
+    background: #fff0f0;
+    border: 1px solid #e0aaaa;
+    color: #a00000;
+    border-radius: 8px;
+    padding: 12px 14px;
+    white-space: pre-wrap;
+  }
+
+  .result {
+    display: none;
+  }
+
+  .result.visible {
+    display: block;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .metric {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 14px;
+    background: #fafafa;
+  }
+
+  .metric-title {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 5px;
+  }
+
+  .metric-value {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .output-block {
+    margin-top: 16px;
+  }
+
+  .output-block h3 {
+    margin-bottom: 7px;
+  }
+
+  .output-list {
+    margin: 0;
+    padding-left: 28px;
+    line-height: 1.7;
+  }
+
+  .output-list li {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .empty {
+    color: #888;
+    padding: 10px 0;
+  }
+
+  .graph-wrapper {
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+  }
+
+  #timeline {
+    display: block;
+    width: 100%;
+    min-width: 760px;
+    height: 280px;
+  }
+
+  @media (max-width: 650px) {
+    body { padding: 12px; }
+    .field-grid, .summary { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>ホロドリ アクティブスキル発動頻度 計算機</h1>
+  <div class="description">
+    編成を入力して、アクティブスキルの発動時間・上昇率を比較します。
+  </div>
+
+  <h2>編成の設定</h2>
+
+  <ul class="help">
+    <li><strong>名前</strong>：ホロメンの名前を入れてください。</li>
+    <li><strong>発動間隔</strong>：アクティブスキル「○○秒毎に」の部分の数値を入れてください。</li>
+    <li><strong>持続時間</strong>：アクティブスキル「○○秒間」の部分の数値を入れてください。</li>
+    <li><strong>上昇率</strong>：アクティブスキルの「○○%UP」の部分の数値を入れてください。</li>
+    <li><strong>解放上限</strong>：ホロメンボードで「アクティブスキル発動頻度」を最大何個解放できるか設定してください。</li>
+  </ul>
+
+  <div class="members" id="members"></div>
+
+  <h2>全体の設定</h2>
+
+  <div class="card">
+    <div class="field-grid">
+      <div class="field">
+        <label for="overallLimit">全体_解放上限</label>
+        <input id="overallLimit" type="number" min="0" step="1" value="15">
+      </div>
+
+      <div class="field">
+        <label for="priority">優先する要素</label>
+        <select id="priority">
+          <option value="time">発動時間</option>
+          <option value="rate">上昇率</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="startTime">開始時刻（秒）</label>
+        <input id="startTime" type="number" min="0" step="any" value="10">
+      </div>
+
+      <div class="field">
+        <label for="endTime">終了時刻（秒）</label>
+        <input id="endTime" type="number" min="0" step="any" value="130">
+      </div>
+    </div>
+  </div>
+
+  <h2>計算する</h2>
+
+  <div class="card">
+    <p class="help">
+      編成を入力したら「計算する」を押してください。
+      現段階ではUIと出力表示部分のみを実装しており、計算ロジックはまだ接続していません。
+    </p>
+
+    <div class="run-area">
+      <button id="calculateButton">計算する</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <div id="error" class="error" hidden></div>
+  </div>
+
+  <section id="result" class="result">
+    <h2>出力</h2>
+
+    <div class="card">
+      <h3>解放設定</h3>
+      <ol class="output-list" id="releaseSettings"></ol>
+
+      <div class="summary">
+        <div class="metric">
+          <div class="metric-title">スキル効果合計</div>
+          <div class="metric-value" id="totalRate">---</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">スキルなし区間長さ</div>
+          <div class="metric-value" id="noSkillTime">---</div>
+        </div>
+      </div>
+
+      <div class="output-block">
+        <h3>スキルなし区間</h3>
+        <ol class="output-list" id="noSkillIntervals"></ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>発動タイムライン</h3>
+      <div class="graph-wrapper">
+        <canvas id="timeline"></canvas>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/*
+ * ホロメン5人分の入力欄を生成。
+ * Notebook の @param に対応するUI。
+ */
+
+const holomems = ["ときのそら", "ロボ子さん", "AZKi", "さくらみこ", "星街すいせい", "アキ・ローゼンタール", "赤井はあと", "白上フブキ", "夏色まつり", "百鬼あやめ", "癒月ちょこ", "大空スバル", "大神ミオ", "猫又おかゆ", "戌神ころね", "兎田ぺこら", "不知火フレア", "白銀ノエル", "宝鐘マリン", "角巻わため", "常闇トワ", "姫森ルーナ", "雪花ラミィ", "桃鈴ねね", "獅白ぼたん", "尾丸ポルカ", "ラプラス・ダークネス", "鷹嶺ルイ", "博衣こより", "風真いろは", "アユンダ・リス", "ムーナ・ホシノヴァ", "アイラニ・イオフィフティーン", "クレージー・オリー", "アーニャ・メルフィッサ", "パヴォリア・レイネ", "ベスティア・ゼータ", "カエラ・コヴァルスキア", "こぼ・かなえる", "森カリオペ", "小鳥遊キアラ", "一伊那尓栖", "IRyS", "オーロ・クロニー", "ハコス・ベールズ", "シオリ・ノヴェラ", "古石ビジュー", "ネリッサ・レイヴンクロフト", "フワワ・アビスガード", "モココ・アビスガード", "音乃瀬奏", "一条莉々華", "儒烏風亭らでん", "轟はじめ"];
+
+const STORAGE_KEY = "holodream_accel_inputs";
+
+// 保存対象のID
+const inputIds = [
+  ...Array.from({ length: 5 }, (_, i) => [
+    `member${i}_name`,
+    `member${i}_cooldown`,
+    `member${i}_duration`,
+    `member${i}_rate`,
+    `member${i}_limit`
+  ]).flat(),
+  "overallLimit",
+  "priority",
+  "startTime",
+  "endTime"
+];
+
+// 保存
+function saveInputs() {
+  const values = {};
+
+  for (const id of inputIds) {
+    const element = document.getElementById(id);
+    if (element) {
+      values[id] = element.value;
+    }
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+}
+
+// 復元
+function restoreInputs() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return;
+
+  try {
+    const values = JSON.parse(saved);
+
+    for (const id of inputIds) {
+      const element = document.getElementById(id);
+
+      if (element && Object.hasOwn(values, id)) {
+        element.value = values[id];
+      }
+    }
+  } catch (e) {
+    console.warn("保存された入力値を読み込めませんでした:", e);
+  }
+}
+
+const membersElement = document.getElementById("members");
+
+for (let i = 0; i < 5; i++) {
+
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <h3>${i + 1} 人目</h3>
+    <div class="field-grid">
+      <div class="field full">
+        <label for="member${i}_name">名前</label>
+        <select id="member${i}_name">
+          ${holomems.map(name => `<option value="${name}">${name}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="member${i}_cooldown">発動間隔（秒）</label>
+        <input id="member${i}_cooldown" type="number"
+               min="0" step="any" value="${15 + i * 5}">
+      </div>
+
+      <div class="field">
+        <label for="member${i}_duration">持続時間（秒）</label>
+        <input id="member${i}_duration" type="number"
+               min="0" step="any" value="${6 + i}">
+      </div>
+
+      <div class="field">
+        <label for="member${i}_rate">上昇率（%）</label>
+        <input id="member${i}_rate" type="number"
+               min="0" step="1" value="${100 + i * 5}">
+      </div>
+
+      <div class="field">
+        <label for="member${i}_limit">解放上限</label>
+        <input id="member${i}_limit" type="number"
+               min="0" step="1" value="3">
+      </div>
+    </div>
+  `;
+
+  membersElement.appendChild(card);
+}
+
+// 前回の入力値を復元
+restoreInputs();
+
+// 入力値が変更されたら自動保存
+for (const id of inputIds) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.addEventListener("change", saveInputs);
+  }
+}
+
+/*
+ * Notebook の出力領域に対応する表示部分。
+ * 現時点ではダミーデータを表示するだけ。
+ * 次の段階で Python の計算ロジックを JavaScript に移植して、
+ * この関数に計算結果を渡す。
+ */
+function displayResult(result) {
+  const resultElement = document.getElementById("result");
+  const releaseSettings = document.getElementById("releaseSettings");
+  const noSkillIntervals = document.getElementById("noSkillIntervals");
+
+  releaseSettings.innerHTML = "";
+  noSkillIntervals.innerHTML = "";
+
+  result.releaseSettings.forEach((item, i) => {
+    const li = document.createElement("li");
+    li.textContent = `ホロメン${i + 1} ${item.name}：${item.count} 個`;
+    releaseSettings.appendChild(li);
+  });
+
+  document.getElementById("totalRate").textContent =
+    result.totalRate.toFixed(3);
+
+  document.getElementById("noSkillTime").textContent =
+    result.noSkillTime.toFixed(3) + " 秒";
+
+  result.noSkillIntervals.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent =
+      `長さ ${item.length.toFixed(3)}秒：時刻 ` +
+      `${item.start.toFixed(3)}秒 ～ ${item.end.toFixed(3)}秒 - ${item.description}`;
+    noSkillIntervals.appendChild(li);
+  });
+
+  if (result.noSkillIntervals.length === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "スキルなし区間はありません。";
+    noSkillIntervals.appendChild(li);
+  }
+
+  resultElement.classList.add("visible");
+
+  drawTimeline(result);
+}
+
+/*
+ * matplotlib のグラフに対応する簡易タイムライン。
+ * 計算ロジック完成後は result.timeline を利用して描画する。
+ */
+function drawTimeline(result) {
+  const canvas = document.getElementById("timeline");
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = Math.max(canvas.parentElement.clientWidth, 760);
+  const cssHeight = 280;
+
+  canvas.style.width = cssWidth + "px";
+  canvas.style.height = cssHeight + "px";
+  canvas.width = Math.floor(cssWidth * dpr);
+  canvas.height = Math.floor(cssHeight * dpr);
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const L = result.startTime - 5;
+  const R = result.endTime + 5;
+  const left = 55;
+  const right = cssWidth - 15;
+  const top = 20;
+  const rowHeight = 32;
+  const gap = 10;
+
+  const x = t => left + (t - L) / (R - L) * (right - left);
+
+  // 縦グリッド
+  ctx.setLineDash([4, 4]);
+  for (let t = Math.ceil(L / 10) * 10; t <= R; t += 10) {
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.beginPath();
+    ctx.moveTo(x(t), top);
+    ctx.lineTo(x(t), top + rowHeight * 6 + gap);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([2, 4]);
+  for (let t = Math.ceil(L / 5) * 5; t <= R; t += 5) {
+    if (t % 10 === 0) continue;
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath();
+    ctx.moveTo(x(t), top);
+    ctx.lineTo(x(t), top + rowHeight * 6 + gap);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // 行ラベル
+  ctx.fillStyle = "#333";
+  ctx.font = "13px sans-serif";
+  ctx.textAlign = "right";
+  for (let i = 0; i < 5; i++) {
+    ctx.fillText(String(i + 1), left - 10,
+      top + (4 - i) * rowHeight + rowHeight / 2 + 5);
+  }
+  ctx.fillText("all", left - 10,
+    top + 5 * rowHeight + rowHeight / 2 + 5);
+
+  // 時刻ラベル
+  ctx.textAlign = "center";
+  for (let t = Math.ceil(L / 10) * 10; t <= R; t += 10) {
+    ctx.fillText(String(t), x(t), top + rowHeight * 6 + gap + 20);
+  }
+
+  // 各ホロメンのスキル区間
+  for (let i = 0; i < 5; i++) {
+    const y = top + (4 - i) * rowHeight;
+    const color = result.colors[i] || "#999";
+
+    for (const interval of result.memberIntervals[i]) {
+      const l = Math.max(interval.start, L);
+      const r = Math.min(interval.end, R);
+      if (l >= r) continue;
+
+      ctx.fillStyle = color;
+      ctx.fillRect(x(l), y, x(r) - x(l), rowHeight - 3);
+    }
+  }
+
+  // all 行
+  const allY = top + 5 * rowHeight;
+  for (const interval of result.allIntervals) {
+    const l = Math.max(interval.start, L);
+    const r = Math.min(interval.end, R);
+    if (l >= r || interval.memberIndex < 0) continue;
+
+    ctx.fillStyle = result.colors[interval.memberIndex] || "#999";
+    ctx.fillRect(x(l), allY, x(r) - x(l), rowHeight - 3);
+  }
+
+  // 枠線は matplotlib 版と同様に描かない。
+}
+
+/* Python版の計算処理をJavaScriptへ移植 */
+function calculate(members, overallLimit, startTime, endTime, priority) {
+  const compareTime = priority === "time";
+  let bestScore1 = compareTime ? 10000 : 0;
+  let bestScore2 = compareTime ? 0 : 10000;
+  let bestKaihou = [0,0,0,0,0];
+  let bestEvents = [];
+
+  for (let k0=0;k0<4;k0++) for (let k1=0;k1<4;k1++)
+  for (let k2=0;k2<4;k2++) for (let k3=0;k3<4;k3++)
+  for (let k4=0;k4<4;k4++) {
+    const kaihou=[k0,k1,k2,k3,k4];
+    if (kaihou.some((k,i)=>k>members[i].limit)) continue;
+    if (kaihou.reduce((a,b)=>a+b,0)>overallLimit) continue;
+
+    const cooldowns=members.map((m,i)=>m.cooldown/(1+kaihou[i]*0.04));
+    const skillEvents=[];
+    for(let i=0;i<5;i++) {
+      const cd=cooldowns[i], dur=members[i].duration;
+      let t=cd;
+      while(t<endTime+10) {
+        skillEvents.push([t,-1,i]);
+        t+=dur;
+        if(t>=endTime+10) break;
+        skillEvents.push([t,1,i]);
+        t+=cd-dur;
+      }
+    }
+    skillEvents.sort((a,b)=>a[0]-b[0] || a[1]-b[1] || a[2]-b[2]);
+
+    const events=[[0,-1]];
+    const active=[false,false,false,false,false];
+    for(const [t,d,i] of skillEvents) {
+      active[i]=(d===-1);
+      let curi=-1, curRate=-1;
+      for(let j=0;j<5;j++) {
+        if(active[j] && curRate<members[j].rate) {
+          curi=j; curRate=members[j].rate;
+        }
+      }
+      if(events[events.length-1][0]===t) events[events.length-1]=[t,curi];
+      else events.push([t,curi]);
+    }
+    events.push([endTime+10,-1]);
+
+    let noSkillTime=0, sumRate=0, prevt=startTime, previ=-1;
+    for(const [t,i] of events) {
+      if(t>=prevt) {
+        const dt=Math.min(t,endTime)-prevt;
+        if(previ===-1) noSkillTime+=dt;
+        else sumRate+=dt*members[previ].rate;
+        prevt=t;
+      }
+      previ=i;
+      if(t>endTime) break;
+    }
+
+    const score1=compareTime ? noSkillTime : -sumRate;
+    const score2=compareTime ? -sumRate : noSkillTime;
+    if(bestScore1>score1 || (bestScore1===score1 && bestScore2>score2)) {
+      bestScore1=score1; bestScore2=score2;
+      bestKaihou=kaihou.slice(); bestEvents=events.map(e=>e.slice());
+    }
+  }
+
+  const bestTime=compareTime ? bestScore1 : bestScore2;
+  const bestRate=compareTime ? -bestScore2 : -bestScore1;
+  const cooldowns=members.map((m,i)=>m.cooldown/(1+bestKaihou[i]*0.04));
+  const memberIntervals=[];
+  const L=startTime-5, R=endTime+5;
+
+  for(let i=0;i<5;i++) {
+    const a=[]; let x=cooldowns[i];
+    while(x<R) {
+      const left=Math.max(x,L), right=Math.min(x+members[i].duration,R);
+      if(left<right) a.push({start:left,end:right});
+      x+=cooldowns[i];
+    }
+    memberIntervals.push(a);
+  }
+
+  const allIntervals=[];
+  for(let i=0;i<bestEvents.length-1;i++) {
+    const [t,idx]=bestEvents[i], next=bestEvents[i+1][0];
+    if(idx===-1) continue;
+    const left=Math.max(t,L), right=Math.min(next,R);
+    if(left<right) allIntervals.push({start:left,end:right,memberIndex:idx});
+  }
+
+  const noSkillIntervals=[];
+  for(let i=0;i<bestEvents.length-1;i++) {
+    const [cur,idx]=bestEvents[i], [next,nextIdx]=bestEvents[i+1];
+    if(idx!==-1 || next<=startTime || endTime<=cur) continue;
+    const left=Math.max(cur,startTime), right=Math.min(next,endTime);
+    if(left>=right) continue;
+    let description;
+    if(cur<=startTime && next>startTime) {
+      description = next>=endTime ? "計測開始 ～ 計測終了" : `計測開始 ～ ${members[nextIdx].name} 開始`;
+    } else if(next>=endTime) {
+      const prevIdx=i>0 ? bestEvents[i-1][1] : -1;
+      description = prevIdx>=0 ? `${members[prevIdx].name} 終了 ～ 計測終了` : "計測開始 ～ 計測終了";
+    } else {
+      const prevIdx=i>0 ? bestEvents[i-1][1] : -1;
+      description = prevIdx>=0 && nextIdx>=0 ? `${members[prevIdx].name} 終了 ～ ${members[nextIdx].name} 開始` : "スキルなし";
+    }
+    noSkillIntervals.push({start:left,end:right,length:right-left,description});
+  }
+
+  const colorData={"ときのそら":"#6878FF","ロボ子さん":"#FF6187","AZKi":"#F081A3","さくらみこ":"#FF909E","星街すいせい":"#75C0FF","アキ・ローゼンタール":"#ABE64D","赤井はあと":"#E5395B","白上フブキ":"#93D5F2","夏色まつり":"#FFCB30","百鬼あやめ":"#DD305B","癒月ちょこ":"#FF5487","大空スバル":"#E5CE00","大神ミオ":"#DB3131","猫又おかゆ":"#D866ED","戌神ころね":"#FFCD28","兎田ぺこら":"#57A9FF","不知火フレア":"#FFAB2D","白銀ノエル":"#A5B5B7","宝鐘マリン":"#C2153B","角巻わため":"#E2D065","常闇トワ":"#B77FFF","姫森ルーナ":"#FF93D0","雪花ラミィ":"#49AAFF","桃鈴ねね":"#FFC633","獅白ぼたん":"#757575","尾丸ポルカ":"#ED0043","ラプラス・ダークネス":"#9464D2","鷹嶺ルイ":"#831550","博衣こより":"#FF95C8","風真いろは":"#5ECFC8","アユンダ・リス":"#FFAAAA","ムーナ・ホシノヴァ":"#AA83FF","アイラニ・イオフィフティーン":"#9CDF36","クレージー・オリー":"#C40041","アーニャ・メルフィッサ":"#F3BF41","パヴォリア・レイネ":"#004DC2","ベスティア・ゼータ":"#9290A1","カエラ・コヴァルスキア":"#FC4045","こぼ・かなえる":"#50CFE1","森カリオペ":"#E01C61","小鳥遊キアラ":"#FF792E","一伊那尓栖":"#5D4E83","IRyS":"#DF185D","オーロ・クロニー":"#2221AA","ハコス・ベールズ":"#EE2222","シオリ・ノヴェラ":"#C288F7","古石ビジュー":"#8674FF","ネリッサ・レイヴンクロフト":"#3950EE","フワワ・アビスガード":"#80C2F8","モココ・アビスガード":"#F79BC2","音乃瀬奏":"#FFD380","一条莉々華":"#FF77A9","儒烏風亭らでん":"#357B6C","轟はじめ":"#A4AAFF"};
+  const colors=members.map(m=>colorData[m.name]||"#999");
+
+  return {releaseSettings:members.map((m,i)=>({name:m.name,count:bestKaihou[i]})),
+    totalRate:bestRate,noSkillTime:bestTime,noSkillIntervals,startTime,endTime,
+    colors,memberIntervals,allIntervals,bestEvents,bestCooldowns:cooldowns};
+}
+
+document.getElementById("calculateButton").addEventListener("click",()=>{
+  const status=document.getElementById("status"), error=document.getElementById("error");
+  error.hidden=true; status.textContent="";
+  try {
+    const members=[];
+    for(let i=0;i<5;i++) {
+      const name=document.getElementById(`member${i}_name`).value;
+      const cooldown=Number(document.getElementById(`member${i}_cooldown`).value);
+      const duration=Number(document.getElementById(`member${i}_duration`).value);
+      const rate=Number(document.getElementById(`member${i}_rate`).value);
+      const limit=Number(document.getElementById(`member${i}_limit`).value);
+      if(cooldown<=0) throw new Error(`${i+1} 人目 ${name}：発動間隔 を 0 より大きくしてください`);
+      if(duration<=0) throw new Error(`${i+1} 人目 ${name}：持続時間 を 0 より大きくしてください`);
+      if(rate<0) throw new Error(`${i+1} 人目 ${name}：上昇率 を 0 以上にしてください`);
+      if(limit<0) throw new Error(`${i+1} 人目 ${name}：解放上限 を 0 以上にしてください`);
+      members.push({name,cooldown,duration,rate,limit});
+    }
+    const overallLimit=Number(document.getElementById("overallLimit").value);
+    const startTime=Number(document.getElementById("startTime").value);
+    const endTime=Number(document.getElementById("endTime").value);
+    const priority=document.getElementById("priority").value;
+    if(overallLimit<0) throw new Error("全体_解放上限 を 0 以上にしてください");
+    if(startTime<0) throw new Error("開始時刻 を 0 以上にしてください");
+    if(endTime<0) throw new Error("終了時刻 を 0 以上にしてください");
+    if(startTime>=endTime) throw new Error("開始時刻 を 終了時刻 より小さくしてください");
+    displayResult(calculate(members,overallLimit,startTime,endTime,priority));
+    status.textContent="計算が完了しました。";
+  } catch(e) {
+    error.textContent=e.message; error.hidden=false;
+    document.getElementById("result").classList.remove("visible");
+  }
+});
+</script>
+</body>
+</html>
