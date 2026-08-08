@@ -470,12 +470,6 @@ for (const id of inputIds) {
   }
 }
 
-/*
- * Notebook の出力領域に対応する表示部分。
- * 現時点ではダミーデータを表示するだけ。
- * 次の段階で Python の計算ロジックを JavaScript に移植して、
- * この関数に計算結果を渡す。
- */
 function displayResult(result) {
   const resultElement = document.getElementById("result");
   const releaseSettings = document.getElementById("releaseSettings");
@@ -538,7 +532,7 @@ function drawTimeline(result) {
 
   const L = result.startTime - 5;
   const R = result.endTime + 5;
-  const left = 55;
+  const left = 110;
   const right = cssWidth - 15;
   const top = 20;
   const rowHeight = 32;
@@ -573,7 +567,7 @@ function drawTimeline(result) {
   ctx.font = "13px sans-serif";
   ctx.textAlign = "right";
   for (let i = 0; i < 5; i++) {
-    ctx.fillText(String(i + 1), left - 10,
+    ctx.fillText(result.releaseSettings[i].name, left - 10,
       top + i * (rowHeight - 3) + rowHeight / 2 + 15);
   }
   ctx.fillText("all", left - 10,
