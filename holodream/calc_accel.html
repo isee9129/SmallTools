@@ -674,8 +674,35 @@ function drawTimeline(result) {
 
       ctx.fillStyle = color;
       ctx.fillRect(x(l), y, x(r) - x(l), rowHeight - 3);
+
+      // 単独発動時間に応じたマーク
+      let mark = "";
+      let size = "13";
+
+      if (interval.soloTime > 3) {
+        mark = "★";
+      } else if (interval.soloTime > 1) {
+        mark = "■";
+      } else if (interval.soloTime > 0) {
+        mark = "▲"; size = "9"
+      }
+
+      if (mark !== "") {
+        const centerX = (x(l) + x(r)) / 2;
+        const centerY = y + (rowHeight - 3) / 2 + 2;
+
+        ctx.font = size + "px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(mark, centerX, centerY);
+        // ctx.fillStyle = "#333";
+        // ctx.fillText(mark2, centerX, centerY);
+      }
     }
   }
+
+  ctx.textBaseline = "alphabetic";
 
   // all 行
   const allY = top + 5 * rowHeight;
@@ -739,6 +766,7 @@ function calculate(members, overallLimit, startTime, endTime, priority, userKaih
   let bestScore2 = compareTime ? 0 : 10000;
   let bestKaihou = [0,0,0,0,0];
   let bestEvents = [];
+  let bestMemberIntervals = [];
 
   // 探索する解放設定を作る
   let kaihouCandidates;
@@ -785,16 +813,90 @@ function calculate(members, overallLimit, startTime, endTime, priority, userKaih
 
     const events=[[0,-1]];
     const active=[false,false,false,false,false];
+
+    // 各スキルの発動区間
+    const memberIntervals = Array.from({length:5}, () => []);
+
+    // 現在発動中の区間。
+    // スキルが開始したときに作成し、終了したときに確定する。
+    const currentIntervals = Array(5).fill(null);
+
+    // 直前のイベント時刻
+    let prevEventTime = 0;
     for(const [t,d,i] of skillEvents) {
-      active[i]=(d===-1);
-      let curi=-1, curRate=-1;
-      for(let j=0;j<5;j++) {
-        if(active[j] && curRate<members[j].rate) {
-          curi=j; curRate=members[j].rate;
+      // 直前のイベントから今回のイベントまで、
+      // どのスキルが発動していたかを調べる。
+      const dt = t - prevEventTime;
+
+      if(dt > 0) {
+        let activeCount = 0;
+        let soleIndex = -1;
+
+        for(let j=0;j<5;j++) {
+          if(active[j]) {
+            activeCount++;
+            soleIndex = j;
+          }
+        }
+
+        // この区間で発動していたスキルが1人だけなら、
+        // そのスキルの soloTime に加算する。
+        if(activeCount === 1 && currentIntervals[soleIndex] !== null) {
+          const l = Math.max(prevEventTime, startTime - 5);
+          const r = Math.min(t, endTime + 5);
+
+          if(l < r) {
+            currentIntervals[soleIndex].soloTime += r - l;
+          }
         }
       }
+
+      // 今回のイベントを反映
+      active[i]=(d===-1);
+
+      // 開始イベント
+      if(d === -1) {
+        currentIntervals[i] = {
+          start: t,
+          end: null,
+          soloTime: 0
+        };
+      }
+      // 終了イベント
+      else {
+        if(currentIntervals[i] !== null) {
+          currentIntervals[i].end = t;
+
+          const interval = currentIntervals[i];
+
+          const l = Math.max(interval.start, startTime - 5);
+          const r = Math.min(interval.end, endTime + 5);
+
+          if(l < r) {
+            memberIntervals[i].push({
+              start: l,
+              end: r,
+              soloTime: interval.soloTime
+            });
+          }
+
+          currentIntervals[i] = null;
+        }
+      }
+
+      let curi=-1, curRate=-1;
+
+      for(let j=0;j<5;j++) {
+        if(active[j] && curRate<members[j].rate) {
+          curi=j;
+          curRate=members[j].rate;
+        }
+      }
+
+      // 以下は既存の処理
       if(events[events.length-1][0]===t) events[events.length-1]=[t,curi];
       else events.push([t,curi]);
+      prevEventTime = t;
     }
     events.push([endTime+10,-1]);
 
@@ -815,24 +917,27 @@ function calculate(members, overallLimit, startTime, endTime, priority, userKaih
     if(bestScore1>score1 || (bestScore1===score1 && bestScore2>score2)) {
       bestScore1=score1; bestScore2=score2;
       bestKaihou=kaihou.slice(); bestEvents=events.map(e=>e.slice());
+      bestMemberIntervals = memberIntervals.map(intervals =>
+        intervals.map(interval => ({ ...interval }))
+      );
     }
   }
 
   const bestTime=compareTime ? bestScore1 : bestScore2;
   const bestRate=compareTime ? -bestScore2 : -bestScore1;
   const cooldowns=members.map((m,i)=>m.cooldown/(1+bestKaihou[i]*0.04));
-  const memberIntervals=[];
+  const memberIntervals = bestMemberIntervals;
   const L=startTime-5, R=endTime+5;
 
-  for(let i=0;i<5;i++) {
-    const a=[]; let x=cooldowns[i];
-    while(x<R) {
-      const left=Math.max(x,L), right=Math.min(x+members[i].duration,R);
-      if(left<right) a.push({start:left,end:right});
-      x+=cooldowns[i];
-    }
-    memberIntervals.push(a);
-  }
+  // for(let i=0;i<5;i++) {
+  //   const a=[]; let x=cooldowns[i];
+  //   while(x<R) {
+  //     const left=Math.max(x,L), right=Math.min(x+members[i].duration,R);
+  //     if(left<right) a.push({start:left,end:right});
+  //     x+=cooldowns[i];
+  //   }
+  //   memberIntervals.push(a);
+  // }
 
   const allIntervals=[];
   for(let i=0;i<bestEvents.length-1;i++) {
