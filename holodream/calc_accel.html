@@ -733,20 +733,41 @@ function drawTimeline(result) {
 }
 
 /* Python版の計算処理をJavaScriptへ移植 */
-function calculate(members, overallLimit, startTime, endTime, priority) {
+function calculate(members, overallLimit, startTime, endTime, priority, userKaihou) {
   const compareTime = priority === "time";
   let bestScore1 = compareTime ? 10000 : 0;
   let bestScore2 = compareTime ? 0 : 10000;
   let bestKaihou = [0,0,0,0,0];
   let bestEvents = [];
 
-  for (let k0=0;k0<4;k0++) for (let k1=0;k1<4;k1++)
-  for (let k2=0;k2<4;k2++) for (let k3=0;k3<4;k3++)
-  for (let k4=0;k4<4;k4++) {
-    const kaihou=[k0,k1,k2,k3,k4];
-    if (kaihou.some((k,i)=>k>members[i].limit)) continue;
-    if (kaihou.reduce((a,b)=>a+b,0)>overallLimit) continue;
+  // 探索する解放設定を作る
+  let kaihouCandidates;
 
+  if (priority === "user") {
+    // ユーザー指定の場合は探索せず、指定された1パターンだけを計算
+    kaihouCandidates = [userKaihou.slice()];
+  } else {
+    // これまで通り 4^5 = 1024 通りを全探索
+    kaihouCandidates = [];
+
+    for (let k0 = 0; k0 < 4; k0++) {
+      for (let k1 = 0; k1 < 4; k1++) {
+        for (let k2 = 0; k2 < 4; k2++) {
+          for (let k3 = 0; k3 < 4; k3++) {
+            for (let k4 = 0; k4 < 4; k4++) {
+              const kaihou=[k0,k1,k2,k3,k4];
+              if (kaihou.some((k,i)=>k>members[i].limit)) continue;
+              if (kaihou.reduce((a,b)=>a+b,0)>overallLimit) continue;
+              kaihouCandidates.push(kaihou);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (const kaihou of kaihouCandidates) {
+    // 以下は既存の処理をそのまま
     const cooldowns=members.map((m,i)=>m.cooldown/(1+kaihou[i]*0.04));
     const skillEvents=[];
     for(let i=0;i<5;i++) {
@@ -869,11 +890,30 @@ document.getElementById("calculateButton").addEventListener("click",()=>{
     const startTime=Number(document.getElementById("startTime").value);
     const endTime=Number(document.getElementById("endTime").value);
     const priority=document.getElementById("priority").value;
+    let userKaihou = null;
+
+    if (priority === "user") {
+      userKaihou = [];
+
+      for (let i = 0; i < 5; i++) {
+        const value = Number(
+          document.getElementById(`kaihou${i}`).value
+        );
+
+        if (!Number.isInteger(value) || value < 0) {
+          throw new Error(
+            `${i + 1} 人目の解放設定を 0 以上の整数にしてください`
+          );
+        }
+
+        userKaihou.push(value);
+      }
+    }
     if(overallLimit<0) throw new Error("全体_解放上限 を 0 以上にしてください");
     if(startTime<0) throw new Error("開始時刻 を 0 以上にしてください");
     if(endTime<0) throw new Error("終了時刻 を 0 以上にしてください");
     if(startTime>=endTime) throw new Error("開始時刻 を 終了時刻 より小さくしてください");
-    displayResult(calculate(members,overallLimit,startTime,endTime,priority));
+    displayResult(calculate(members,overallLimit,startTime,endTime,priority,userKaihou));
     status.textContent="計算が完了しました。";
   } catch(e) {
     error.textContent=e.message; error.hidden=false;
