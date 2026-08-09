@@ -145,6 +145,29 @@
     cursor: default;
   }
 
+  .user-kaihou-settings {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    background: #fafafa;
+  }
+
+  .kaihou-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .kaihou-grid .field {
+    min-width: 0;
+  }
+
+  .kaihou-grid label {
+    font-size: 13px;
+  }
+
   .status {
     color: #666;
     font-size: 14px;
@@ -227,6 +250,9 @@
 
   @media (max-width: 650px) {
     body { padding: 12px; }
+    .kaihou-grid {
+      grid-template-columns: 1fr 1fr;
+    }
     .field-grid, .summary { grid-template-columns: 1fr; }
   }
 </style>
@@ -277,11 +303,6 @@
       </div>
 
       <div class="field">
-        <label for="priority">優先する要素</label>
-        <select id="priority">
-          <option value="time">発動時間</option>
-          <option value="rate">上昇率</option>
-        </select>
       </div>
 
       <div class="field">
@@ -292,6 +313,46 @@
       <div class="field">
         <label for="endTime">終了時刻（秒）</label>
         <input id="endTime" type="number" min="0" step="any" value="130">
+      </div>
+
+      <div class="field">
+        <label for="priority">発動頻度の解放数</label>
+        <select id="priority">
+          <option value="time">発動時間重視</option>
+          <option value="rate">上昇率重視</option>
+          <option value="user">ユーザー指定</option>
+        </select>
+
+        <div id="userKaihouSettings" class="user-kaihou-settings" hidden>
+          <label>解放設定</label>
+
+          <div class="kaihou-grid">
+            <div class="field">
+              <label for="kaihou0">1人目</label>
+              <input id="kaihou0" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou1">2人目</label>
+              <input id="kaihou1" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou2">3人目</label>
+              <input id="kaihou2" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou3">4人目</label>
+              <input id="kaihou3" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou4">5人目</label>
+              <input id="kaihou4" type="number" min="0" step="1" value="0">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -374,7 +435,8 @@ const inputIds = [
   "overallLimit",
   "priority",
   "startTime",
-  "endTime"
+  "endTime",
+  ...Array.from({ length: 5 }, (_, i) => `kaihou${i}`)
 ];
 
 // 保存
@@ -410,6 +472,21 @@ function restoreInputs() {
     console.warn("保存された入力値を読み込めませんでした:", e);
   }
 }
+
+const priorityElement = document.getElementById("priority");
+const userKaihouSettings =
+  document.getElementById("userKaihouSettings");
+
+function updateKaihouSettingsVisibility() {
+  userKaihouSettings.hidden = priorityElement.value !== "user";
+}
+
+priorityElement.addEventListener(
+  "change",
+  updateKaihouSettingsVisibility
+);
+
+updateKaihouSettingsVisibility();
 
 const membersElement = document.getElementById("members");
 
@@ -656,20 +733,41 @@ function drawTimeline(result) {
 }
 
 /* Python版の計算処理をJavaScriptへ移植 */
-function calculate(members, overallLimit, startTime, endTime, priority) {
+function calculate(members, overallLimit, startTime, endTime, priority, userKaihou) {
   const compareTime = priority === "time";
   let bestScore1 = compareTime ? 10000 : 0;
   let bestScore2 = compareTime ? 0 : 10000;
   let bestKaihou = [0,0,0,0,0];
   let bestEvents = [];
 
-  for (let k0=0;k0<4;k0++) for (let k1=0;k1<4;k1++)
-  for (let k2=0;k2<4;k2++) for (let k3=0;k3<4;k3++)
-  for (let k4=0;k4<4;k4++) {
-    const kaihou=[k0,k1,k2,k3,k4];
-    if (kaihou.some((k,i)=>k>members[i].limit)) continue;
-    if (kaihou.reduce((a,b)=>a+b,0)>overallLimit) continue;
+  // 探索する解放設定を作る
+  let kaihouCandidates;
 
+  if (priority === "user") {
+    // ユーザー指定の場合は探索せず、指定された1パターンだけを計算
+    kaihouCandidates = [userKaihou.slice()];
+  } else {
+    // これまで通り 4^5 = 1024 通りを全探索
+    kaihouCandidates = [];
+
+    for (let k0 = 0; k0 < 4; k0++) {
+      for (let k1 = 0; k1 < 4; k1++) {
+        for (let k2 = 0; k2 < 4; k2++) {
+          for (let k3 = 0; k3 < 4; k3++) {
+            for (let k4 = 0; k4 < 4; k4++) {
+              const kaihou=[k0,k1,k2,k3,k4];
+              if (kaihou.some((k,i)=>k>members[i].limit)) continue;
+              if (kaihou.reduce((a,b)=>a+b,0)>overallLimit) continue;
+              kaihouCandidates.push(kaihou);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (const kaihou of kaihouCandidates) {
+    // 以下は既存の処理をそのまま
     const cooldowns=members.map((m,i)=>m.cooldown/(1+kaihou[i]*0.04));
     const skillEvents=[];
     for(let i=0;i<5;i++) {
@@ -792,11 +890,30 @@ document.getElementById("calculateButton").addEventListener("click",()=>{
     const startTime=Number(document.getElementById("startTime").value);
     const endTime=Number(document.getElementById("endTime").value);
     const priority=document.getElementById("priority").value;
+    let userKaihou = null;
+
+    if (priority === "user") {
+      userKaihou = [];
+
+      for (let i = 0; i < 5; i++) {
+        const value = Number(
+          document.getElementById(`kaihou${i}`).value
+        );
+
+        if (!Number.isInteger(value) || value < 0) {
+          throw new Error(
+            `${i + 1} 人目の解放設定を 0 以上の整数にしてください`
+          );
+        }
+
+        userKaihou.push(value);
+      }
+    }
     if(overallLimit<0) throw new Error("全体_解放上限 を 0 以上にしてください");
     if(startTime<0) throw new Error("開始時刻 を 0 以上にしてください");
     if(endTime<0) throw new Error("終了時刻 を 0 以上にしてください");
     if(startTime>=endTime) throw new Error("開始時刻 を 終了時刻 より小さくしてください");
-    displayResult(calculate(members,overallLimit,startTime,endTime,priority));
+    displayResult(calculate(members,overallLimit,startTime,endTime,priority,userKaihou));
     status.textContent="計算が完了しました。";
   } catch(e) {
     error.textContent=e.message; error.hidden=false;
