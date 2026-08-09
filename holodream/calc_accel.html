@@ -145,6 +145,29 @@
     cursor: default;
   }
 
+  .user-kaihou-settings {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    background: #fafafa;
+  }
+
+  .kaihou-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .kaihou-grid .field {
+    min-width: 0;
+  }
+
+  .kaihou-grid label {
+    font-size: 13px;
+  }
+
   .status {
     color: #666;
     font-size: 14px;
@@ -227,6 +250,9 @@
 
   @media (max-width: 650px) {
     body { padding: 12px; }
+    .kaihou-grid {
+      grid-template-columns: 1fr 1fr;
+    }
     .field-grid, .summary { grid-template-columns: 1fr; }
   }
 </style>
@@ -277,11 +303,6 @@
       </div>
 
       <div class="field">
-        <label for="priority">優先する要素</label>
-        <select id="priority">
-          <option value="time">発動時間</option>
-          <option value="rate">上昇率</option>
-        </select>
       </div>
 
       <div class="field">
@@ -292,6 +313,46 @@
       <div class="field">
         <label for="endTime">終了時刻（秒）</label>
         <input id="endTime" type="number" min="0" step="any" value="130">
+      </div>
+
+      <div class="field">
+        <label for="priority">発動頻度の解放数</label>
+        <select id="priority">
+          <option value="time">発動時間重視</option>
+          <option value="rate">上昇率重視</option>
+          <option value="user">ユーザー指定</option>
+        </select>
+
+        <div id="userKaihouSettings" class="user-kaihou-settings" hidden>
+          <label>解放設定</label>
+
+          <div class="kaihou-grid">
+            <div class="field">
+              <label for="kaihou0">1人目</label>
+              <input id="kaihou0" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou1">2人目</label>
+              <input id="kaihou1" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou2">3人目</label>
+              <input id="kaihou2" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou3">4人目</label>
+              <input id="kaihou3" type="number" min="0" step="1" value="0">
+            </div>
+
+            <div class="field">
+              <label for="kaihou4">5人目</label>
+              <input id="kaihou4" type="number" min="0" step="1" value="0">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -374,7 +435,8 @@ const inputIds = [
   "overallLimit",
   "priority",
   "startTime",
-  "endTime"
+  "endTime",
+  ...Array.from({ length: 5 }, (_, i) => `kaihou${i}`)
 ];
 
 // 保存
@@ -410,6 +472,21 @@ function restoreInputs() {
     console.warn("保存された入力値を読み込めませんでした:", e);
   }
 }
+
+const priorityElement = document.getElementById("priority");
+const userKaihouSettings =
+  document.getElementById("userKaihouSettings");
+
+function updateKaihouSettingsVisibility() {
+  userKaihouSettings.hidden = priorityElement.value !== "user";
+}
+
+priorityElement.addEventListener(
+  "change",
+  updateKaihouSettingsVisibility
+);
+
+updateKaihouSettingsVisibility();
 
 const membersElement = document.getElementById("members");
 
